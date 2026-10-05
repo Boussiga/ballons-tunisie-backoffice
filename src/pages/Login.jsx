@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import PasswordInput from '../components/PasswordInput'
+import loginBg from '../assets/login-bg.png'
 
 export default function Login() {
   const { admin, login } = useAuth()
@@ -35,8 +37,17 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-sidebar px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm rounded-lg bg-white p-8 shadow-xl">
+    <div
+      className="relative flex min-h-screen items-center justify-center bg-sidebar bg-cover bg-center px-4"
+      style={{ backgroundImage: `url(${loginBg})` }}
+    >
+      {/* dark layer so the form stays readable on any picture */}
+      <div className="absolute inset-0 bg-black/55" />
+
+      <form
+        onSubmit={handleSubmit}
+        className="relative z-10 w-full max-w-sm rounded-lg bg-white/95 p-8 shadow-2xl backdrop-blur"
+      >
         <h1 className="font-display text-3xl tracking-[0.3em] text-sidebar">VISION</h1>
         <p className="mb-6 font-display text-xs tracking-wider text-brand-dark">
           BACKOFFICE PRO - CONNEXION ADMINISTRATEUR
@@ -46,19 +57,21 @@ export default function Login() {
         <input
           type="email"
           required
+          autoComplete="username"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="mb-4 w-full rounded border border-slate-300 px-3 py-2 outline-none focus:border-brand"
         />
 
         <label className="mb-1 block text-sm text-slate-600">Mot de passe</label>
-        <input
-          type="password"
-          required
-          value={motDePasse}
-          onChange={(e) => setMotDePasse(e.target.value)}
-          className="mb-4 w-full rounded border border-slate-300 px-3 py-2 outline-none focus:border-brand"
-        />
+        <div className="mb-4">
+          <PasswordInput
+            required
+            autoComplete="current-password"
+            value={motDePasse}
+            onChange={(e) => setMotDePasse(e.target.value)}
+          />
+        </div>
 
         {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
 

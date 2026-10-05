@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { updateProfile } from '../api/authApi'
+import PasswordInput from '../components/PasswordInput'
 
 export default function Profile() {
   const { admin, setAdmin } = useAuth()
@@ -53,12 +54,13 @@ export default function Profile() {
         <label className="mb-1 block text-sm text-slate-600">
           Nouveau mot de passe (laisser vide pour ne pas changer)
         </label>
-        <input
-          type="password"
-          value={motDePasse}
-          onChange={(e) => setMotDePasse(e.target.value)}
-          className="mb-4 w-full rounded border border-slate-300 px-3 py-2 outline-none focus:border-brand"
-        />
+        <div className="mb-4">
+          <PasswordInput
+            autoComplete="new-password"
+            value={motDePasse}
+            onChange={(e) => setMotDePasse(e.target.value)}
+          />
+        </div>
 
         {message && <p className="mb-4 text-sm text-slate-700">{message}</p>}
 
