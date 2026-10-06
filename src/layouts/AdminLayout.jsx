@@ -1,11 +1,14 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, UserRound, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { LayoutDashboard, Package, Boxes, UserRound, LogOut } from 'lucide-react'
 
 const links = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
+  { to: '/produits', label: 'Stocks & Ballons', icon: Package },
+  { to: '/packs', label: 'Packs', icon: Boxes },
   { to: '/profile', label: 'Mon profil', icon: UserRound },
 ]
+
 
 export default function AdminLayout() {
   const { admin, logout } = useAuth()
