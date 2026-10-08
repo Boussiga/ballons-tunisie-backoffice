@@ -1,11 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { LayoutDashboard, Package, Boxes, UserRound, LogOut } from 'lucide-react'
+import { LayoutDashboard, Package, Boxes, BadgePercent, UserRound, LogOut } from 'lucide-react'
 
 const links = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
   { to: '/produits', label: 'Stocks & Ballons', icon: Package },
   { to: '/packs', label: 'Packs', icon: Boxes },
+  { to: '/offres', label: 'Offres', icon: BadgePercent },
   { to: '/profile', label: 'Mon profil', icon: UserRound },
 ]
 
