@@ -1,14 +1,48 @@
 import { useEffect, useState } from 'react'
+import { Check, MapPin, Phone } from 'lucide-react'
 import { annulerCommande, getCommande, recalculerTotal, updateStatut } from '../api/commandesApi'
 import { getErrorMessage } from '../api/errors'
 import { formatDateHeure, formatPrix } from '../utils/format'
 import { STATUTS, STATUT_SUIVANT, libelleLigne, peutAnnuler, prixUnitaire, totalLigne } from '../utils/commandes'
+import { useConfirm, useToast } from '../context/FeedbackContext'
+import { Badge, Skeleton, primaryButton, secondaryButton } from './ui'
+
+const ETAPES = ['en_attente', 'confirmee', 'livree']
+
+// en attente → confirmée → livrée (a cancelled order shows where it stopped)
+function Avancement({ statut }) {
+  if (statut === 'annulee') return null
+  const actuelle = ETAPES.indexOf(statut)
+  return (
+    <ol className="flex items-center">
+      {ETAPES.map((e, i) => {
+        const fait = i <= actuelle
+        return (
+          <li key={e} className={`flex items-center ${i < ETAPES.length - 1 ? 'flex-1' : ''}`}>
+            <span className="flex items-center gap-2">
+              <span
+                className={`flex size-6 items-center justify-center rounded-full text-xs ${
+                  fait ? 'bg-brand text-white' : 'border-2 border-slate-300 text-slate-400'
+                }`}
+              >
+                {i < actuelle ? <Check size={14} /> : i + 1}
+              </span>
+              <span className={`text-xs ${fait ? 'font-medium text-slate-800' : 'text-slate-500'}`}>{STATUTS[e].label}</span>
+            </span>
+            {i < ETAPES.length - 1 && <span className={`mx-3 h-0.5 flex-1 ${i < actuelle ? 'bg-brand' : 'bg-slate-200'}`} />}
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
 
 export default function CommandeDetail({ id, onChanged, onClose }) {
   const [reload, setReload] = useState(0)
   const [result, setResult] = useState({ key: '', commande: null, error: '' })
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState(null) // { type: 'success' | 'error', text }
+  const toast = useToast()
+  const confirm = useConfirm()
 
   const key = `${id}:${reload}`
   const loading = result.key !== key
@@ -29,14 +63,13 @@ export default function CommandeDetail({ id, onChanged, onClose }) {
 
   async function run(action, successText) {
     setBusy(true)
-    setMessage(null)
     try {
       await action()
-      setMessage({ type: 'success', text: successText })
+      toast.success(successText)
       setReload((n) => n + 1) // reload this order
       onChanged() // and the list behind the modal
     } catch (err) {
-      setMessage({ type: 'error', text: getErrorMessage(err) })
+      toast.error(getErrorMessage(err))
     } finally {
       setBusy(false)
     }
@@ -45,29 +78,51 @@ export default function CommandeDetail({ id, onChanged, onClose }) {
   const { commande, error } = result
 
   if (!commande) {
-    return <p className="py-6 text-center text-slate-500">{loading ? 'Chargement…' : error}</p>
+    if (!loading) return <p className="py-6 text-center text-red-700">{error}</p>
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-6 w-1/3" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    )
   }
 
   const statut = STATUTS[commande.statut]
   const suivant = STATUT_SUIVANT[commande.statut]
 
-  function handleAnnuler() {
-    if (!window.confirm('Annuler cette commande ? Cette action est définitive.')) return
+  async function handleAnnuler() {
+    const ok = await confirm({
+      title: 'Annuler cette commande ?',
+      message: `La commande de ${commande.nomClient} (${formatPrix(commande.total)}) sera annulée. Cette action est définitive.`,
+      confirmLabel: 'ANNULER LA COMMANDE',
+      cancelLabel: 'Retour',
+      danger: true,
+    })
+    if (!ok) return
     run(() => annulerCommande(commande.id), 'Commande annulée.')
   }
 
   return (
     <div className={`space-y-5 ${loading ? 'opacity-60' : ''}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className={`rounded-full px-3 py-1 text-xs font-medium ${statut.className}`}>{statut.label}</span>
+        <Badge className={statut.className}>{statut.label}</Badge>
         <span className="text-sm text-slate-500">Passée le {formatDateHeure(commande.dateCommande)}</span>
       </div>
+
+      <Avancement statut={commande.statut} />
 
       <div className="rounded border border-slate-200 p-4 text-sm">
         <p className="text-xs uppercase tracking-wider text-slate-500">Client</p>
         <p className="mt-1 font-medium text-slate-800">{commande.nomClient}</p>
-        <p className="text-slate-600">{commande.telephoneClient}</p>
-        <p className="mt-2 text-slate-600">{commande.adresseLivraison}</p>
+        <a href={`tel:${commande.telephoneClient}`} className="mt-1 inline-flex items-center gap-1.5 text-slate-600 hover:text-brand">
+          <Phone size={14} />
+          {commande.telephoneClient}
+        </a>
+        <p className="mt-1 flex items-start gap-1.5 text-slate-600">
+          <MapPin size={14} className="mt-0.5 shrink-0" />
+          {commande.adresseLivraison}
+        </p>
         <p className="mt-3 break-all text-xs text-slate-400">N° de commande : {commande.id}</p>
       </div>
 
@@ -118,16 +173,6 @@ export default function CommandeDetail({ id, onChanged, onClose }) {
         </p>
       </div>
 
-      {message && (
-        <p
-          className={`rounded px-3 py-2 text-sm ${
-            message.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'
-          }`}
-        >
-          {message.text}
-        </p>
-      )}
-
       <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-4">
         {peutAnnuler(commande.statut) && (
           <button
@@ -144,12 +189,12 @@ export default function CommandeDetail({ id, onChanged, onClose }) {
             type="button"
             disabled={busy}
             onClick={() => run(() => updateStatut(commande.id, suivant.statut), 'Statut mis à jour.')}
-            className="rounded bg-brand px-5 py-2 font-display tracking-wider text-white hover:bg-brand-dark disabled:opacity-60"
+            className={`${primaryButton} px-5`}
           >
             {suivant.label.toUpperCase()}
           </button>
         )}
-        <button type="button" onClick={onClose} className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
+        <button type="button" onClick={onClose} className={secondaryButton}>
           Fermer
         </button>
       </div>

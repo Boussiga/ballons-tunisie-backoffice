@@ -9,7 +9,7 @@ export default function PasswordInput({ className = '', ...props }) {
       <input
         {...props}
         type={visible ? 'text' : 'password'}
-        className={`w-full rounded border border-slate-300 py-2 pl-3 pr-10 outline-none focus:border-brand ${className}`}
+        className={`w-full rounded border border-slate-300 py-2 pl-3 pr-10 bg-white outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 ${className}`}
       />
       <button
         type="button"

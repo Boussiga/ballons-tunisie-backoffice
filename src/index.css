@@ -7,3 +7,32 @@
   --color-brand-dark: #b0000f;
   --color-sidebar: #2a2d31;
 }
+
+@layer base {
+  /* visible keyboard focus everywhere, never on mouse click */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: none;
+  }
+  button:not(:disabled),
+  [role='button'] {
+    cursor: pointer;
+  }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.page-in { animation: fade-up 0.2s ease-out; }
+.modal-in { animation: fade-up 0.18s ease-out; }
+.toast-in { animation: fade-up 0.2s ease-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .page-in, .modal-in, .toast-in { animation: none; }
+}

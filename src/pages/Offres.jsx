@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { BadgePercent, Pencil, Plus, Trash2 } from 'lucide-react'
 import { deleteOffre, getOffres } from '../api/offresApi'
 import { getErrorMessage } from '../api/errors'
 import { formatDateHeure, statutOffre } from '../utils/format'
+import { useConfirm, useToast } from '../context/FeedbackContext'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import OffreForm from '../components/OffreForm'
+import { Badge, EmptyState, ErrorState, PageHeader, SearchInput, SkeletonRows, fieldClass, primaryButton, secondaryButton } from '../components/ui'
 
 const STATUTS = {
   'en-cours': { label: 'En cours', className: 'bg-green-100 text-green-800' },
@@ -20,20 +22,47 @@ const FILTRES = [
   { value: 'false', label: 'Terminées ou à venir' },
 ]
 
+const JOUR_MS = 24 * 60 * 60 * 1000
+
+// "dans 3 j", "encore 5 j", "il y a 2 j" — what the admin wants to know at a glance
+function delai(offre, statut) {
+  const now = Date.now()
+  const jours = (date) => Math.max(1, Math.ceil(Math.abs(new Date(date) - now) / JOUR_MS))
+  if (statut === 'a-venir') return `commence dans ${jours(offre.dateDebut)} j`
+  if (statut === 'en-cours') return `encore ${jours(offre.dateFin)} j`
+  return `terminée il y a ${jours(offre.dateFin)} j`
+}
+
+function ProduitsOffre({ produits = [] }) {
+  if (produits.length === 0) return <span className="text-xs text-amber-700">Aucun produit</span>
+  const visibles = produits.slice(0, 2)
+  return (
+    <div className="flex flex-wrap gap-1" title={produits.map((p) => p.nom).join(', ')}>
+      {visibles.map((p) => (
+        <span key={p.id} className="max-w-36 truncate rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">
+          {p.nom}
+        </span>
+      ))}
+      {produits.length > 2 && <span className="rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-500">+{produits.length - 2}</span>}
+    </div>
+  )
+}
+
 export default function Offres() {
+  const toast = useToast()
+  const confirm = useConfirm()
   const [page, setPage] = useState(1)
-  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [filtre, setFiltre] = useState('')
   const [reload, setReload] = useState(0)
   const [modal, setModal] = useState(null) // null | { offre: object | null }
-  const [notice, setNotice] = useState(null) // { type: 'success' | 'error', text }
   const [result, setResult] = useState({ key: '', offres: [], pagination: null, error: '' })
 
   const { offres, pagination, error } = result
 
   const key = JSON.stringify({ page, search, filtre, reload })
   const loading = result.key !== key
+  const firstLoad = loading && result.key === ''
 
   useEffect(() => {
     let ignore = false
@@ -54,10 +83,9 @@ export default function Offres() {
 
   const refresh = () => setReload((n) => n + 1)
 
-  function handleSearch(e) {
-    e.preventDefault()
+  function handleSearch(value) {
     setPage(1)
-    setSearch(searchInput.trim())
+    setSearch(value)
   }
 
   function handleFiltre(e) {
@@ -65,72 +93,52 @@ export default function Offres() {
     setFiltre(e.target.value)
   }
 
+  function resetFilters() {
+    setPage(1)
+    setSearch('')
+    setFiltre('')
+  }
+
   function handleSaved() {
+    toast.success(modal.offre ? 'Offre mise à jour.' : 'Offre créée.')
     setModal(null)
-    setNotice({ type: 'success', text: 'Offre enregistrée.' })
     refresh()
   }
 
   async function handleDelete(offre) {
-    if (!window.confirm(`Supprimer l’offre « ${offre.titre} » ?`)) return
+    const ok = await confirm({
+      title: 'Supprimer cette offre ?',
+      message: `« ${offre.titre} » ne s’appliquera plus aux produits concernés.`,
+      confirmLabel: 'SUPPRIMER',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await deleteOffre(offre.id)
       if (offres.length === 1 && page > 1) setPage(page - 1)
-      setNotice({ type: 'success', text: 'Offre supprimée.' })
+      toast.success('Offre supprimée.')
       refresh()
     } catch (err) {
-      setNotice({ type: 'error', text: getErrorMessage(err) })
+      toast.error(getErrorMessage(err))
     }
   }
 
+  const nouvelle = (
+    <button onClick={() => setModal({ offre: null })} className={primaryButton}>
+      <Plus size={16} />
+      NOUVELLE OFFRE
+    </button>
+  )
+
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-display text-xs tracking-wider text-brand-dark">GESTION DU CATALOGUE</p>
-          <h1 className="font-display text-2xl text-sidebar">OFFRES</h1>
-        </div>
-        <button
-          onClick={() => setModal({ offre: null })}
-          className="flex items-center gap-2 rounded bg-brand px-4 py-2 font-display text-sm tracking-wider text-white hover:bg-brand-dark"
-        >
-          <Plus size={16} />
-          NOUVELLE OFFRE
-        </button>
-      </div>
+      <PageHeader kicker="GESTION DU CATALOGUE" title="OFFRES">
+        {nouvelle}
+      </PageHeader>
 
-      {notice && (
-        <div
-          className={`mb-4 flex items-center justify-between rounded px-4 py-2 text-sm ${
-            notice.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'
-          }`}
-        >
-          <span>{notice.text}</span>
-          <button onClick={() => setNotice(null)} className="ml-4 text-xs underline">
-            Fermer
-          </button>
-        </div>
-      )}
-
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <form onSubmit={handleSearch} className="flex w-fit items-center rounded border border-slate-300 bg-white">
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Rechercher une offre…"
-            className="w-64 px-3 py-2 text-sm outline-none"
-          />
-          <button type="submit" aria-label="Rechercher" className="px-3 text-slate-500 hover:text-brand">
-            <Search size={16} />
-          </button>
-        </form>
-
-        <select
-          value={filtre}
-          onChange={handleFiltre}
-          aria-label="Filtrer par statut"
-          className="rounded border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand"
-        >
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <SearchInput value={search} onSearch={handleSearch} placeholder="Rechercher une offre…" />
+        <select value={filtre} onChange={handleFiltre} aria-label="Filtrer par statut" className={fieldClass}>
           {FILTRES.map((f) => (
             <option key={f.value} value={f.value}>
               {f.label}
@@ -139,36 +147,49 @@ export default function Offres() {
         </select>
       </div>
 
-      <div className={`overflow-x-auto rounded-lg bg-white shadow-sm ${loading ? 'opacity-50' : ''}`}>
+      <div className="overflow-x-auto rounded-lg bg-white shadow-sm">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+          <thead className="bg-slate-50 font-display text-xs tracking-wider text-slate-500">
             <tr>
-              <th className="px-4 py-3">Offre</th>
-              <th className="px-4 py-3">Réduction</th>
-              <th className="px-4 py-3">Début</th>
-              <th className="px-4 py-3">Fin</th>
-              <th className="px-4 py-3">Statut</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+              <th className="px-4 py-3">OFFRE</th>
+              <th className="px-4 py-3">RÉDUCTION</th>
+              <th className="hidden px-4 py-3 md:table-cell">PRODUITS</th>
+              <th className="hidden px-4 py-3 lg:table-cell">PÉRIODE</th>
+              <th className="px-4 py-3">STATUT</th>
+              <th className="px-4 py-3 text-right">ACTIONS</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className={`divide-y divide-slate-100 transition-opacity ${loading ? 'opacity-50' : ''}`}>
+            {firstLoad && <SkeletonRows cols={6} />}
             {offres.map((o) => {
-              const statut = STATUTS[statutOffre(o)]
+              const code = statutOffre(o)
+              const statut = STATUTS[code]
               return (
-                <tr key={o.id}>
-                  <td className="px-4 py-3 font-medium text-slate-800">{o.titre}</td>
-                  <td className="px-4 py-3 font-display text-lg text-brand">−{o.pourcentageReduction} %</td>
-                  <td className="px-4 py-3 text-slate-600">{formatDateHeure(o.dateDebut)}</td>
-                  <td className="px-4 py-3 text-slate-600">{formatDateHeure(o.dateFin)}</td>
+                <tr key={o.id} className="hover:bg-slate-50/70">
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statut.className}`}>{statut.label}</span>
+                    <p className="font-medium text-slate-800">{o.titre}</p>
+                    <p className="text-xs text-slate-500 lg:hidden">
+                      {formatDateHeure(o.dateDebut)} → {formatDateHeure(o.dateFin)}
+                    </p>
+                  </td>
+                  <td className="px-4 py-3 font-display text-lg text-brand">−{o.pourcentageReduction} %</td>
+                  <td className="hidden px-4 py-3 md:table-cell">
+                    <ProduitsOffre produits={o.produits} />
+                  </td>
+                  <td className="hidden whitespace-nowrap px-4 py-3 text-slate-600 lg:table-cell">
+                    <p>{formatDateHeure(o.dateDebut)}</p>
+                    <p className="text-xs text-slate-500">→ {formatDateHeure(o.dateFin)}</p>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end gap-3 text-slate-500">
-                      <button onClick={() => setModal({ offre: o })} aria-label="Modifier" className="hover:text-brand">
+                    <Badge className={statut.className}>{statut.label}</Badge>
+                    <p className="mt-1 whitespace-nowrap text-xs text-slate-500">{delai(o, code)}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-1 text-slate-500">
+                      <button onClick={() => setModal({ offre: o })} aria-label={`Modifier ${o.titre}`} title="Modifier" className="rounded p-1.5 hover:bg-slate-100 hover:text-brand">
                         <Pencil size={16} />
                       </button>
-                      <button onClick={() => handleDelete(o)} aria-label="Supprimer" className="hover:text-brand">
+                      <button onClick={() => handleDelete(o)} aria-label={`Supprimer ${o.titre}`} title="Supprimer" className="rounded p-1.5 hover:bg-red-50 hover:text-red-600">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -179,8 +200,18 @@ export default function Offres() {
           </tbody>
         </table>
 
-        {!loading && offres.length === 0 && (
-          <p className="px-4 py-8 text-center text-slate-500">{error || 'Aucune offre trouvée.'}</p>
+        {!loading && error && <ErrorState text={error} onRetry={refresh} />}
+        {!loading && !error && offres.length === 0 && (
+          search || filtre ? (
+            <EmptyState
+              icon={BadgePercent}
+              title="Aucune offre ne correspond"
+              text="Modifiez la recherche ou le filtre."
+              action={<button onClick={resetFilters} className={secondaryButton}>Réinitialiser les filtres</button>}
+            />
+          ) : (
+            <EmptyState icon={BadgePercent} title="Aucune offre pour l’instant" text="Créez une promotion limitée dans le temps sur une sélection de produits." action={nouvelle} />
+          )
         )}
       </div>
 

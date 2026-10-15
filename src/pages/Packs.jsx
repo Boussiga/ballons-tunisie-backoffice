@@ -1,71 +1,100 @@
 import { useEffect, useState } from 'react'
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Boxes, Pencil, Plus, Trash2 } from 'lucide-react'
 import { deletePack, getPacks } from '../api/packsApi'
 import { getErrorMessage } from '../api/errors'
 import { formatPrix } from '../utils/format'
+import { useConfirm, useToast } from '../context/FeedbackContext'
 import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
 import PackForm from '../components/PackForm'
+import { Badge, EmptyState, ErrorState, PageHeader, SearchInput, Skeleton, primaryButton, secondaryButton } from '../components/ui'
+
+const sommeProduits = (pack) => pack.produits.reduce((sum, l) => sum + l.produit.prix * l.quantite, 0)
 
 // The API stores the pack price when it is saved. If a product price changed
-// since then, the stored price no longer matches the current total.
+// since then, the stored price no longer matches the products minus the discount.
 function isPriceStale(pack) {
-  const current = pack.produits.reduce((sum, l) => sum + l.produit.prix * l.quantite, 0)
-  return pack.prixPack - current > 0.005   // was: Math.abs(current - pack.prixPack) > 0.005
+  const attendu = Math.round(sommeProduits(pack) * (1 - (pack.pourcentageRemise ?? 0) / 100) * 100) / 100
+  return Math.abs(attendu - pack.prixPack) > 0.01
 }
 
 function PackCard({ pack, onEdit, onDelete }) {
+  const total = sommeProduits(pack)
+  const remise = pack.pourcentageRemise ?? 0
+  const economie = total - pack.prixPack
+
   return (
-    <div className="flex flex-col rounded-lg bg-white p-5 shadow-sm">
+    <div className="flex flex-col rounded-lg bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-display text-lg text-sidebar">{pack.nom}</h3>
-        <span className="font-display text-lg text-brand">{formatPrix(pack.prixPack)}</span>
+        <div className="min-w-0">
+          <h3 className="font-display text-lg text-sidebar">{pack.nom}</h3>
+          {pack.description && <p className="mt-0.5 text-sm text-slate-500">{pack.description}</p>}
+        </div>
+        {remise > 0 && <Badge className="shrink-0 bg-brand/10 text-brand-dark">−{remise} %</Badge>}
       </div>
 
-      {pack.description && <p className="mt-1 text-sm text-slate-500">{pack.description}</p>}
-
-      <ul className="mt-3 flex-1 space-y-1 text-sm">
+      <ul className="mt-4 flex-1 space-y-1.5 border-t border-slate-100 pt-3 text-sm">
         {pack.produits.map((l) => (
           <li key={l.produitId} className="flex justify-between gap-3">
             <span className="truncate text-slate-700">
-              {l.quantite} × {l.produit.nom}
+              <span className="text-slate-400">{l.quantite} ×</span> {l.produit.nom}
             </span>
-            <span className="text-slate-500">{formatPrix(l.produit.prix * l.quantite)}</span>
+            <span className="whitespace-nowrap text-slate-500">{formatPrix(l.produit.prix * l.quantite)}</span>
           </li>
         ))}
       </ul>
+
+      <div className="mt-4 flex items-end justify-between gap-3">
+        <div>
+          {economie > 0.005 && <p className="text-xs text-slate-400 line-through">{formatPrix(total)}</p>}
+          <p className="font-display text-2xl leading-none text-brand">{formatPrix(pack.prixPack)}</p>
+          {economie > 0.005 && <p className="mt-1 text-xs text-green-700">Le client économise {formatPrix(economie)}</p>}
+        </div>
+        <div className="flex gap-1 text-slate-500">
+          <button onClick={() => onEdit(pack)} aria-label={`Modifier ${pack.nom}`} title="Modifier" className="rounded p-1.5 hover:bg-slate-100 hover:text-brand">
+            <Pencil size={16} />
+          </button>
+          <button onClick={() => onDelete(pack)} aria-label={`Supprimer ${pack.nom}`} title="Supprimer" className="rounded p-1.5 hover:bg-red-50 hover:text-red-600">
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
 
       {isPriceStale(pack) && (
         <p className="mt-3 rounded bg-amber-50 px-3 py-2 text-xs text-amber-800">
           Un produit a changé de prix. Modifiez puis enregistrez le pack pour recalculer son prix.
         </p>
       )}
+    </div>
+  )
+}
 
-      <div className="mt-4 flex justify-end gap-3 border-t border-slate-100 pt-3 text-slate-500">
-        <button onClick={() => onEdit(pack)} aria-label="Modifier" className="hover:text-brand">
-          <Pencil size={16} />
-        </button>
-        <button onClick={() => onDelete(pack)} aria-label="Supprimer" className="hover:text-brand">
-          <Trash2 size={16} />
-        </button>
-      </div>
+function PackSkeleton() {
+  return (
+    <div className="space-y-3 rounded-lg bg-white p-5 shadow-sm">
+      <Skeleton className="h-5 w-2/3" />
+      <Skeleton className="h-4 w-1/2" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-7 w-1/3" />
     </div>
   )
 }
 
 export default function Packs() {
+  const toast = useToast()
+  const confirm = useConfirm()
   const [page, setPage] = useState(1)
-  const [searchInput, setSearchInput] = useState('')
   const [search, setSearch] = useState('')
   const [reload, setReload] = useState(0)
   const [modal, setModal] = useState(null) // null | { pack: object | null }
-  const [notice, setNotice] = useState(null) // { type: 'success' | 'error', text }
   const [result, setResult] = useState({ key: '', packs: [], pagination: null, error: '' })
 
   const { packs, pagination, error } = result
 
   const key = JSON.stringify({ page, search, reload })
   const loading = result.key !== key
+  const firstLoad = loading && result.key === ''
 
   useEffect(() => {
     let ignore = false
@@ -85,81 +114,72 @@ export default function Packs() {
 
   const refresh = () => setReload((n) => n + 1)
 
-  function handleSearch(e) {
-    e.preventDefault()
+  function handleSearch(value) {
     setPage(1)
-    setSearch(searchInput.trim())
+    setSearch(value)
   }
 
   function handleSaved() {
+    toast.success(modal.pack ? 'Pack mis à jour.' : 'Pack créé.')
     setModal(null)
-    setNotice({ type: 'success', text: 'Pack enregistré.' })
     refresh()
   }
 
   async function handleDelete(pack) {
-    if (!window.confirm(`Supprimer le pack « ${pack.nom} » ?`)) return
+    const ok = await confirm({
+      title: 'Supprimer ce pack ?',
+      message: `« ${pack.nom} » ne sera plus proposé aux clients. Les produits qu’il contient sont conservés.`,
+      confirmLabel: 'SUPPRIMER',
+      danger: true,
+    })
+    if (!ok) return
     try {
       await deletePack(pack.id)
       if (packs.length === 1 && page > 1) setPage(page - 1)
-      setNotice({ type: 'success', text: 'Pack supprimé.' })
+      toast.success('Pack supprimé.')
       refresh()
     } catch (err) {
-      setNotice({ type: 'error', text: getErrorMessage(err) })
+      toast.error(getErrorMessage(err))
     }
   }
 
+  const nouveau = (
+    <button onClick={() => setModal({ pack: null })} className={primaryButton}>
+      <Plus size={16} />
+      NOUVEAU PACK
+    </button>
+  )
+
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-display text-xs tracking-wider text-brand-dark">GESTION DU CATALOGUE</p>
-          <h1 className="font-display text-2xl text-sidebar">PACKS</h1>
-        </div>
-        <button
-          onClick={() => setModal({ pack: null })}
-          className="flex items-center gap-2 rounded bg-brand px-4 py-2 font-display text-sm tracking-wider text-white hover:bg-brand-dark"
-        >
-          <Plus size={16} />
-          NOUVEAU PACK
-        </button>
-      </div>
+      <PageHeader kicker="GESTION DU CATALOGUE" title="PACKS">
+        {nouveau}
+      </PageHeader>
 
-      {notice && (
-        <div
-          className={`mb-4 flex items-center justify-between rounded px-4 py-2 text-sm ${
-            notice.type === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-700'
-          }`}
-        >
-          <span>{notice.text}</span>
-          <button onClick={() => setNotice(null)} className="ml-4 text-xs underline">
-            Fermer
-          </button>
-        </div>
-      )}
+      <SearchInput value={search} onSearch={handleSearch} placeholder="Rechercher un pack…" className="mb-4 w-full sm:w-72" />
 
-      <form onSubmit={handleSearch} className="mb-4 flex w-fit items-center rounded border border-slate-300 bg-white">
-        <input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Rechercher un pack…"
-          className="w-64 px-3 py-2 text-sm outline-none"
-        />
-        <button type="submit" aria-label="Rechercher" className="px-3 text-slate-500 hover:text-brand">
-          <Search size={16} />
-        </button>
-      </form>
-
-      <div className={`grid gap-4 sm:grid-cols-2 xl:grid-cols-3 ${loading ? 'opacity-50' : ''}`}>
+      <div className={`grid gap-4 transition-opacity sm:grid-cols-2 xl:grid-cols-3 ${loading && !firstLoad ? 'opacity-50' : ''}`}>
+        {firstLoad && [0, 1, 2].map((i) => <PackSkeleton key={i} />)}
         {packs.map((p) => (
           <PackCard key={p.id} pack={p} onEdit={(pack) => setModal({ pack })} onDelete={handleDelete} />
         ))}
       </div>
 
-      {!loading && packs.length === 0 && (
-        <p className="rounded-lg bg-white px-4 py-8 text-center text-slate-500 shadow-sm">
-          {error || 'Aucun pack trouvé.'}
-        </p>
+      {!loading && (error || packs.length === 0) && (
+        <div className="rounded-lg bg-white shadow-sm">
+          {error ? (
+            <ErrorState text={error} onRetry={refresh} />
+          ) : search ? (
+            <EmptyState
+              icon={Boxes}
+              title="Aucun pack ne correspond"
+              text={`Aucun résultat pour « ${search} ».`}
+              action={<button onClick={() => handleSearch('')} className={secondaryButton}>Effacer la recherche</button>}
+            />
+          ) : (
+            <EmptyState icon={Boxes} title="Aucun pack pour l’instant" text="Regroupez plusieurs produits avec une remise pour augmenter le panier moyen." action={nouveau} />
+          )}
+        </div>
       )}
 
       <Pagination pagination={pagination} onPage={setPage} />
