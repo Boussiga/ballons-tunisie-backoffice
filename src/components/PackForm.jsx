@@ -4,16 +4,17 @@ import { getProduits } from '../api/produitsApi'
 import { createPack, updatePack } from '../api/packsApi'
 import { getErrorMessage } from '../api/errors'
 import { formatPrix } from '../utils/format'
-
-const inputClass = 'w-full rounded border border-slate-300 px-3 py-2 outline-none focus:border-brand'
+import { FormActions, FormError, inputClass } from './ui'
 
 export default function PackForm({ pack, onSaved, onCancel }) {
   const [nom, setNom] = useState(pack?.nom ?? '')
+  // stored discount; older packs without it: deduce it from the stored price
   const [pourcentage, setPourcentage] = useState(() => {
-  if (!pack) return ''
-  const somme = pack.produits.reduce((s, l) => s + l.produit.prix * l.quantite, 0)
-  return somme > 0 && pack.prixPack < somme ? String(Math.round((1 - pack.prixPack / somme) * 100)) : ''
-})
+    if (!pack) return ''
+    if (pack.pourcentageRemise) return String(pack.pourcentageRemise)
+    const somme = pack.produits.reduce((s, l) => s + l.produit.prix * l.quantite, 0)
+    return somme > 0 && pack.prixPack < somme ? String(Math.round((1 - pack.prixPack / somme) * 100)) : ''
+  })
   const [description, setDescription] = useState(pack?.description ?? '')
   // one line per product in the pack: { produitId, quantite } (quantite kept as text while typing)
   const [lignes, setLignes] = useState(() =>
@@ -95,7 +96,7 @@ export default function PackForm({ pack, onSaved, onCancel }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <label className="block text-sm text-slate-600">
-        Nom du pack
+        Nom du pack<span className="text-brand"> *</span>
         <input required minLength={2} maxLength={200} value={nom} onChange={(e) => setNom(e.target.value)} className={`${inputClass} mt-1`} />
       </label>
 
@@ -105,7 +106,7 @@ export default function PackForm({ pack, onSaved, onCancel }) {
       </label>
 
       <div className="text-sm text-slate-600">
-        Produits du pack (au moins 2)
+        Produits du pack<span className="text-brand"> *</span> <span className="text-xs text-slate-500">(au moins 2)</span>
         <div className="mt-1 flex gap-2">
           <select value={choix} onChange={(e) => setChoix(e.target.value)} className={inputClass} disabled={catalogueState !== 'ready'}>
             <option value="">
@@ -122,7 +123,7 @@ export default function PackForm({ pack, onSaved, onCancel }) {
             type="button"
             onClick={addLigne}
             disabled={!choix}
-            className="rounded bg-sidebar px-4 text-white hover:bg-black disabled:opacity-40"
+            className="shrink-0 rounded bg-sidebar px-4 text-sm text-white hover:bg-black disabled:opacity-40"
           >
             Ajouter
           </button>
@@ -142,9 +143,9 @@ export default function PackForm({ pack, onSaved, onCancel }) {
                   aria-label="Quantité"
                   value={l.quantite}
                   onChange={(e) => setQuantite(l.produitId, e.target.value)}
-                  className="w-16 rounded border border-slate-300 px-2 py-1"
+                  className="w-16 rounded border border-slate-300 px-2 py-1 outline-none focus:border-brand"
                 />
-                <button type="button" onClick={() => removeLigne(l.produitId)} aria-label="Retirer" className="text-slate-500 hover:text-brand">
+                <button type="button" onClick={() => removeLigne(l.produitId)} aria-label={`Retirer ${p?.nom ?? 'le produit'}`} className="rounded p-1 text-slate-500 hover:bg-red-50 hover:text-red-600">
                   <Trash2 size={16} />
                 </button>
               </li>
@@ -153,14 +154,14 @@ export default function PackForm({ pack, onSaved, onCancel }) {
           {lignes.length === 0 && <li className="px-3 py-3 text-slate-500">Aucun produit ajouté.</li>}
         </ul>
 
-        <div className="mt-3 flex items-center justify-between gap-3">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded bg-slate-50 px-3 py-2.5">
           <label className="flex items-center gap-2 text-sm text-slate-600">
             Remise (%)
             <input
               type="number" min="0" max="100" step="1"
               value={pourcentage}
               onChange={(e) => setPourcentage(e.target.value)}
-              className="w-20 rounded border border-slate-300 px-2 py-1"
+              className="w-20 rounded border border-slate-300 bg-white px-2 py-1 outline-none focus:border-brand"
             />
           </label>
           <p className="text-right text-sm">
@@ -170,16 +171,8 @@ export default function PackForm({ pack, onSaved, onCancel }) {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onCancel} className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50">
-          Annuler
-        </button>
-        <button type="submit" disabled={saving} className="rounded bg-brand px-5 py-2 font-display tracking-wider text-white hover:bg-brand-dark disabled:opacity-60">
-          {saving ? 'ENREGISTREMENT…' : 'ENREGISTRER'}
-        </button>
-      </div>
+      <FormError>{error}</FormError>
+      <FormActions saving={saving} onCancel={onCancel} />
     </form>
   )
 }

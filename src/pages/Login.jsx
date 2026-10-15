@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import PasswordInput from '../components/PasswordInput'
 import loginBg from '../assets/login-bg.png'
+import { FormError, inputClass, primaryButton } from '../components/ui'
 
 export default function Login() {
   const { admin, login } = useAuth()
@@ -48,24 +49,27 @@ export default function Login() {
         onSubmit={handleSubmit}
         className="relative z-10 w-full max-w-sm rounded-lg bg-white/95 p-8 shadow-2xl backdrop-blur"
       >
-        <h1 className="font-display text-3xl tracking-[0.3em] text-sidebar">Ballons Tunisie</h1>
-        <p className="mb-6 font-display text-xs tracking-wider text-brand-dark">
-          BACKOFFICE PRO - CONNEXION ADMINISTRATEUR
-        </p>
+        <div className="mb-6 flex flex-col items-center text-center">
+          <img src="/logo.png" alt="Ballons Tunisie" className="mb-3 h-20 w-auto" />
+          <p className="font-display text-xs tracking-wider text-brand-dark">BACKOFFICE PRO - CONNEXION ADMINISTRATEUR</p>
+        </div>
 
-        <label className="mb-1 block text-sm text-slate-600">Email</label>
+        <label htmlFor="login-email" className="mb-1 block text-sm text-slate-600">Email</label>
         <input
+          id="login-email"
           type="email"
           required
+          autoFocus
           autoComplete="username"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mb-4 w-full rounded border border-slate-300 px-3 py-2 outline-none focus:border-brand"
+          className={`${inputClass} mb-4`}
         />
 
-        <label className="mb-1 block text-sm text-slate-600">Mot de passe</label>
+        <label htmlFor="login-password" className="mb-1 block text-sm text-slate-600">Mot de passe</label>
         <div className="mb-4">
           <PasswordInput
+            id="login-password"
             required
             autoComplete="current-password"
             value={motDePasse}
@@ -73,13 +77,14 @@ export default function Login() {
           />
         </div>
 
-        {error && <p className="mb-4 text-sm text-red-600">{error}</p>}
+        {error && (
+          <div className="mb-4">
+            <FormError>{error}</FormError>
+          </div>
+        )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded bg-brand py-2 font-display tracking-wider text-white hover:bg-brand-dark disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting} className={`${primaryButton} w-full py-2.5`}>
+          {submitting && <span className="size-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
           {submitting ? 'CONNEXION…' : 'SE CONNECTER'}
         </button>
       </form>
