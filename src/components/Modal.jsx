@@ -1,13 +1,13 @@
 import { X } from 'lucide-react'
 
-export default function Modal({ title, onClose, children }) {
+export default function Modal({ title, onClose, children, size = 'max-w-lg' }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onMouseDown={onClose}
     >
       <div
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg bg-white p-6 shadow-xl"
+        className={`max-h-[90vh] w-full ${size} overflow-y-auto rounded-lg bg-white p-6 shadow-xl`}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">

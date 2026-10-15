@@ -9,6 +9,11 @@ const inputClass = 'w-full rounded border border-slate-300 px-3 py-2 outline-non
 
 export default function PackForm({ pack, onSaved, onCancel }) {
   const [nom, setNom] = useState(pack?.nom ?? '')
+  const [pourcentage, setPourcentage] = useState(() => {
+  if (!pack) return ''
+  const somme = pack.produits.reduce((s, l) => s + l.produit.prix * l.quantite, 0)
+  return somme > 0 && pack.prixPack < somme ? String(Math.round((1 - pack.prixPack / somme) * 100)) : ''
+})
   const [description, setDescription] = useState(pack?.description ?? '')
   // one line per product in the pack: { produitId, quantite } (quantite kept as text while typing)
   const [lignes, setLignes] = useState(() =>
@@ -39,6 +44,8 @@ export default function PackForm({ pack, onSaved, onCancel }) {
     (sum, l) => sum + (infoProduit(l.produitId)?.prix ?? 0) * (Number(l.quantite) || 0),
     0
   )
+  const pct = Math.min(100, Math.max(0, Number(pourcentage) || 0))
+  const prixFinal = Math.round(total * (1 - pct / 100) * 100) / 100
 
   function addLigne() {
     if (!choix) return
@@ -71,6 +78,7 @@ export default function PackForm({ pack, onSaved, onCancel }) {
       nom,
       description,
       produits: lignes.map((l) => ({ produitId: l.produitId, quantite: Number(l.quantite) })),
+      pourcentageRemise: pct,
     }
 
     setSaving(true)
@@ -145,9 +153,21 @@ export default function PackForm({ pack, onSaved, onCancel }) {
           {lignes.length === 0 && <li className="px-3 py-3 text-slate-500">Aucun produit ajouté.</li>}
         </ul>
 
-        <p className="mt-2 text-right">
-          Prix du pack (calculé automatiquement) : <span className="font-display text-lg text-brand">{formatPrix(total)}</span>
-        </p>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            Remise (%)
+            <input
+              type="number" min="0" max="100" step="1"
+              value={pourcentage}
+              onChange={(e) => setPourcentage(e.target.value)}
+              className="w-20 rounded border border-slate-300 px-2 py-1"
+            />
+          </label>
+          <p className="text-right text-sm">
+            {pct > 0 && <span className="mr-2 text-slate-400 line-through">{formatPrix(total)}</span>}
+            Prix du pack : <span className="font-display text-lg text-brand">{formatPrix(prixFinal)}</span>
+          </p>
+        </div>
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}

@@ -48,7 +48,7 @@ export default function Login() {
         onSubmit={handleSubmit}
         className="relative z-10 w-full max-w-sm rounded-lg bg-white/95 p-8 shadow-2xl backdrop-blur"
       >
-        <h1 className="font-display text-3xl tracking-[0.3em] text-sidebar">VISION</h1>
+        <h1 className="font-display text-3xl tracking-[0.3em] text-sidebar">Ballons Tunisie</h1>
         <p className="mb-6 font-display text-xs tracking-wider text-brand-dark">
           BACKOFFICE PRO - CONNEXION ADMINISTRATEUR
         </p>

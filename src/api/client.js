@@ -1,7 +1,7 @@
 import axios from 'axios'
 
-export const ACCESS_KEY = 'vision_access_token'
-export const REFRESH_KEY = 'vision_refresh_token'
+export const ACCESS_KEY = 'ballons_access_token'
+export const REFRESH_KEY = 'ballons_refresh_token'
 
 const baseURL = import.meta.env.VITE_API_URL || ''
 

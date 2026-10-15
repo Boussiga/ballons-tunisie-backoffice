@@ -11,7 +11,7 @@ import PackForm from '../components/PackForm'
 // since then, the stored price no longer matches the current total.
 function isPriceStale(pack) {
   const current = pack.produits.reduce((sum, l) => sum + l.produit.prix * l.quantite, 0)
-  return Math.abs(current - pack.prixPack) > 0.005
+  return pack.prixPack - current > 0.005   // was: Math.abs(current - pack.prixPack) > 0.005
 }
 
 function PackCard({ pack, onEdit, onDelete }) {

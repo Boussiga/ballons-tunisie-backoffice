@@ -8,6 +8,7 @@ import Profile from './pages/Profile'
 import Produits from './pages/Produits'
 import Packs from './pages/Packs'
 import Offres from './pages/Offres'
+import Commandes from './pages/Commandes'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
               <Route path="/produits" element={<Produits />} />
               <Route path="/packs" element={<Packs />} />
               <Route path="/offres" element={<Offres />} />
+              <Route path="/commandes" element={<Commandes />} />
             </Route>
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

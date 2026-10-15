@@ -1,6 +1,6 @@
-# Vision Admin (back-office)
+# Ballons Tunisie (back-office)
 
-React back-office for the Vision sports balls shop. Module 1: admin authentication.
+React back-office for the Ballons Tunisie balls shop. Module 1: admin authentication.
 
 ## Setup
 ```bash

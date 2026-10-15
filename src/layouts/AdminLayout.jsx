@@ -1,12 +1,13 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { LayoutDashboard, Package, Boxes, BadgePercent, UserRound, LogOut } from 'lucide-react'
+import { LayoutDashboard, Package, Boxes, BadgePercent, ClipboardList, UserRound, LogOut } from 'lucide-react'
 
 const links = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
   { to: '/produits', label: 'Stocks & Ballons', icon: Package },
   { to: '/packs', label: 'Packs', icon: Boxes },
   { to: '/offres', label: 'Offres', icon: BadgePercent },
+  { to: '/commandes', label: 'Commandes', icon: ClipboardList },
   { to: '/profile', label: 'Mon profil', icon: UserRound },
 ]
 
@@ -17,7 +18,7 @@ export default function AdminLayout() {
   return (
     <div className="flex min-h-screen bg-slate-100">
       <aside className="w-56 shrink-0 bg-sidebar text-white">
-        <div className="px-4 py-5 font-display text-2xl tracking-[0.3em]">VISION</div>
+        <div className="px-4 py-5 font-display text-2xl tracking-[0.3em]">Ballons Tunisie</div>
         <nav className="flex flex-col gap-1 px-2">
           {links.map(({ to, label, icon: Icon, end }) => (
             <NavLink
@@ -40,7 +41,7 @@ export default function AdminLayout() {
       <div className="flex flex-1 flex-col">
         <header className="flex h-12 items-center justify-between border-b border-slate-200 bg-white px-6">
           <span className="font-display text-xs tracking-wider text-brand-dark">
-            BACKOFFICE PRO - VISION SPORTS
+            BACKOFFICE PRO - BALLONS TUNISIE
           </span>
           <div className="flex items-center gap-3">
             <span className="text-sm text-slate-600">{admin.nom}</span>
