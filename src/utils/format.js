@@ -3,7 +3,11 @@ export const formatPrix = (prix) =>
   `${Number(prix).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${DEVISE}`
 
 // Images are served by the API under /uploads/...
-export const imageSrc = (url) => (url ? `${import.meta.env.VITE_API_URL || ''}${url}` : null)
+// Cloudinary images are absolute https URLs; old products may still have a local /uploads path
+export const imageSrc = (url) => {
+  if (!url) return null
+  return /^https?:\/\//i.test(url) ? url : `${import.meta.env.VITE_API_URL || ''}${url}`
+}
 
 // ── Dates (offers) ───────────────────────────────────────────────────────────
 export const formatDateHeure = (iso) =>
