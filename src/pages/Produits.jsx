@@ -70,8 +70,16 @@ function StockCell({ produit, onUpdated }) {
 }
 
 function Vignette({ produit }) {
+  const nbImages = produit.images?.length ?? 0
   return produit.imageUrl ? (
-    <img src={imageSrc(produit.imageUrl)} alt="" className="size-11 shrink-0 rounded object-cover ring-1 ring-slate-200" />
+    <span className="relative shrink-0">
+      <img src={imageSrc(produit.imageUrl)} alt="" className="size-11 rounded object-cover ring-1 ring-slate-200" />
+      {nbImages > 1 && (
+        <span title={`${nbImages} images`} className="absolute -bottom-1 -right-1 rounded-full bg-slate-800 px-1.5 text-[10px] leading-4 text-white ring-2 ring-white">
+          {nbImages}
+        </span>
+      )}
+    </span>
   ) : (
     <span className="flex size-11 shrink-0 items-center justify-center rounded bg-slate-100 text-slate-400">
       <ImageOff size={18} />
